@@ -54,6 +54,7 @@ def send_message(bot, message):
     except telegram.TelegramError:
         logger.error(f'Сообщение не отправлено: {message}')
 
+
 def get_api_answer(timestamp):
     """Запрос API."""
     try:
@@ -64,8 +65,10 @@ def get_api_answer(timestamp):
         )
         status_code = response.status_code
         if status_code != HTTPStatus.OK:
-            raise exceptions.SCIsNot200(f' {ENDPOINT} не доступен'
-                            f'код {status_code}')
+            raise exceptions.SCIsNot200(
+                f' {ENDPOINT} не доступен'
+                f'код {status_code}'
+            )
         return response.json()
     except requests.exceptions.RequestException as error_request:
         logger.error (f'Ошибка в запросе {error_request}')
