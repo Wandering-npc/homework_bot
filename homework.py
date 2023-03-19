@@ -71,7 +71,7 @@ def get_api_answer(timestamp):
             )
         return response.json()
     except requests.exceptions.RequestException as error_request:
-        logger.error (f'Ошибка в запросе {error_request}')
+        logger.error(f'Ошибка в запросе {error_request}')
 
 
 def check_response(response):
