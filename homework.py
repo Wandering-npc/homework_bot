@@ -3,6 +3,8 @@ import os
 import requests
 import telegram
 import time
+import sys
+import exceptions
 
 from logging import StreamHandler
 from http import HTTPStatus
@@ -43,8 +45,7 @@ def check_tokens():
 def send_message(bot, message):
     """Отправка сообщения."""
     try:
-        message_info = f'Сообщение готово к отправке: {message}'
-        logger.debug(message_info)
+        logger.info(f'Сообщение готово к отправке: {message}')
         bot.send_message(
             chat_id=TELEGRAM_CHAT_ID,
             text=message,
@@ -53,28 +54,27 @@ def send_message(bot, message):
     except telegram.TelegramError:
         logger.error(f'Сообщение не отправлено: {message}')
 
-
 def get_api_answer(timestamp):
     """Запрос API."""
     try:
-        response = requests.get(ENDPOINT,
-                                headers=HEADERS,
-                                params={'from_date': timestamp})
+        response = requests.get(
+            ENDPOINT,
+            headers=HEADERS,
+            params={'from_date': timestamp}
+        )
         status_code = response.status_code
         if status_code != HTTPStatus.OK:
-            raise Exception(f' {ENDPOINT} не доступен'
+            raise exceptions.SCIsNot200(f' {ENDPOINT} не доступен'
                             f'код {status_code}')
-        response = response.json()
-        return response
+        return response.json()
     except requests.exceptions.RequestException as error_request:
-        raise (f'Ошибка в запросе {error_request}')
+        logger.error (f'Ошибка в запросе {error_request}')
 
 
 def check_response(response):
     """Проверка респонса."""
     if not response:
         message = 'Ответ от API пуст.'
-        logger.error(message)
         raise Exception(message)
     if not isinstance(response, dict):
         message = 'Структура данных не соответсвует ожиданиям.'
@@ -92,8 +92,7 @@ def parse_status(homework):
     verdict = homework.get('status')
     homework_name = homework.get('homework_name')
     if verdict not in HOMEWORK_VERDICTS:
-        message = f'Неизвестный статус работы {verdict}'
-        raise Exception(message)
+        raise Exception(f'Неизвестный статус работы {verdict}')
     if verdict is None:
         raise Exception('Пустой статус')
     if homework_name is None:
@@ -107,17 +106,20 @@ def main():
     """Основная логика работы бота."""
     if not check_tokens():
         logger.critical('Отсутствует токен')
-        exit()
+        sys.exit()
     bot = telegram.Bot(token=TELEGRAM_TOKEN)
     send_message(bot, 'Бот включен')
     timestamp = int(time.time())
+    previous_message = ''
     while True:
         try:
             response = get_api_answer(timestamp)
             timestamp = response.get('current_date')
             homework = check_response(response)[0]
             message = parse_status(homework)
-            send_message(bot, message)
+            if previous_message != message:
+                send_message(bot, message)
+                previous_message = message
         except Exception as error:
             message = f'Сбой: {error}'
             logger.error(message)
