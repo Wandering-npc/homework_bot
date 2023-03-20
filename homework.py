@@ -77,14 +77,11 @@ def get_api_answer(timestamp):
 def check_response(response):
     """Проверка респонса."""
     if not response:
-        message = 'Ответ от API пуст.'
-        raise Exception(message)
+        raise exceptions.NoResponse('Ответ от API пуст.')
     if not isinstance(response, dict):
-        message = 'Структура данных не соответсвует ожиданиям.'
-        logger.error(message)
-        raise TypeError(message)
+        raise TypeError('Структура данных не соответсвует ожиданиям.')
     if 'homeworks' not in response:
-        raise Exception('Отсутсвует ключ homeworks')
+        raise exceptions.NoKeyInResponse('Отсутсвует ключ homeworks')
     if not isinstance(response["homeworks"], list):
         raise TypeError('Неверный тип данных у homeworks')
     return response.get('homeworks')
@@ -95,11 +92,11 @@ def parse_status(homework):
     verdict = homework.get('status')
     homework_name = homework.get('homework_name')
     if verdict not in HOMEWORK_VERDICTS:
-        raise Exception(f'Неизвестный статус работы {verdict}')
+        raise exceptions.VariableNotIN(f'Неизвестный статус работы {verdict}')
     if verdict is None:
-        raise Exception('Пустой статус')
+        raise exceptions.VariableIsNone('Пустой статус')
     if homework_name is None:
-        raise Exception('Отсутсвует имя работы')
+        raise exceptions.VariableIsNone('Отсутсвует имя работы')
 
     verdict = HOMEWORK_VERDICTS[verdict]
     return f'Изменился статус проверки работы "{homework_name}". {verdict}'
@@ -109,7 +106,7 @@ def main():
     """Основная логика работы бота."""
     if not check_tokens():
         logger.critical('Отсутствует токен')
-        sys.exit()
+        sys.exit('Работа бота прервана')
     bot = telegram.Bot(token=TELEGRAM_TOKEN)
     send_message(bot, 'Бот включен')
     timestamp = int(time.time())
@@ -123,9 +120,8 @@ def main():
             if previous_message != message:
                 send_message(bot, message)
                 previous_message = message
-        except Exception as error:
-            message = f'Сбой: {error}'
-            logger.error(message)
+        except exceptions.MessageFailed as error:
+            logger.error(f'Сбой: {error}')
         finally:
             time.sleep(RETRY_PERIOD)
 
